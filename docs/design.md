@@ -12,7 +12,7 @@ This document is the Week 3 design. The Week 5 slice (field arithmetic, the AES 
 | 5 | AES-128 block cipher and RSA `extended_gcd` / `modinv` / `modexp` | Done |
 | 7 | AES-CBC and PKCS#7 (`src/cryptosystem/aes/modes.py`) | Next teammate |
 | 9 | Text/file helpers and the Streamlit AES page (`app.py`) | Same teammate, through the first scheme |
-| 11 | RSA primes, key generation, textbook encrypt/decrypt, PKCS#1 v1.5 | Other teammate |
+| 11 | RSA primes, key generation, textbook encrypt/decrypt, PKCS#1 v1.5, RSA page | Done (Pichponleur) |
 | 13 | Hybrid package and one GUI with AES, RSA, and hybrid pages | Return to this after the two schemes exist |
 | 15 | Recorded group presentation | Whole group |
 
@@ -27,7 +27,8 @@ src/cryptosystem/aes/key_schedule.py   expand_key(key, nk=None)
 src/cryptosystem/aes/cipher.py         encrypt_block, decrypt_block
 src/cryptosystem/aes/modes.py          CBC, PKCS#7, text/file helpers (stub)
 src/cryptosystem/rsa/number_theory.py  extended_gcd, modinv, modexp
-src/cryptosystem/rsa/rsa.py            RSAKey plus the scheme (stub)
+src/cryptosystem/rsa/rsa.py            RSAKey plus the scheme
+src/cryptosystem/gui/rsa_page.py       Streamlit RSA page, render()
 src/cryptosystem/hybrid.py             HybridPackage plus encrypt/decrypt (stub)
 tests/fips197.py                       Published FIPS-197 vectors
 tests/unit/                            One module per area
@@ -81,7 +82,7 @@ Textbook check, `p = 61`, `q = 53`, `n = 3233`, `phi = 3120`, `e = 17`, `d = 275
 - `modinv(17, 3120) == 2753`
 - `modexp(65, 17, 3233) == 2790`
 
-Left for Week 11, specified in `rsa.py` and `tests/unit/test_rsa.py`:
+Done in Week 11, in `rsa.py` and `tests/unit/test_rsa.py`:
 
 - `RSAKey(n, e, d=None, p=None, q=None)` is already a frozen dataclass. `byte_length` is `(n.bit_length() + 7) // 8`.
 - `is_probable_prime(n, rounds=40, rng=None)`: Miller-Rabin. `False` for `n < 2` and for even `n` other than 2.
@@ -92,6 +93,13 @@ Left for Week 11, specified in `rsa.py` and `tests/unit/test_rsa.py`:
 - `encrypt` / `decrypt`: pad to `byte_length`, exponentiate, return a big-endian byte string of that length.
 
 The demo modulus is about 1024 bits. Unit tests may pass a smaller even `bits` so they stay fast. The GUI shows `n`, `e`, and `d`.
+
+Also added in Week 11:
+
+- `decrypt_int_crt(ciphertext, key)`: CRT decryption with `d mod (p - 1)` and `d mod (q - 1)` (Paar and Pelzl, Section 7.5.2). Byte `decrypt` uses it when `p` and `q` are known. It is about three times faster than plain decryption for a 1024-bit key.
+- Miller-Rabin first tries division by the odd primes below 200, which rejects most random candidates cheaply.
+- `pkcs1_v15_unpad` raises the same error for every malformed block.
+- The RSA page (`src/cryptosystem/gui/rsa_page.py`) has four sections: key generation (or the textbook key `p = 61`, `q = 53`, `e = 17`), textbook RSA on integers, PKCS#1 v1.5 on text, and a Miller-Rabin checker. It keeps the key in `st.session_state["rsa_key"]` so the hybrid page can reuse it. `app.py` only needs `from cryptosystem.gui import rsa_page` and `rsa_page.render()`.
 
 ## Hybrid
 
@@ -136,5 +144,5 @@ Run the finished app with `streamlit run app.py`.
 | `tests/unit/test_aes_block.py` | 5 | passing |
 | `tests/unit/test_number_theory.py` | 5 | passing |
 | `tests/unit/test_modes.py` | 7 and 9 | skipped |
-| `tests/unit/test_rsa.py` | 11 | skipped, except `RSAKey.byte_length` |
+| `tests/unit/test_rsa.py` | 11 | passing |
 | `tests/system/test_hybrid.py` | 13 | skipped |
