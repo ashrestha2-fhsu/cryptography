@@ -1,6 +1,6 @@
 # CSCI 663 group project: AES and RSA
 
-From-scratch AES-128 and RSA in Python. The finished demo is a hybrid scheme (RSA wraps an AES session key, AES-CBC encrypts the message) behind one Streamlit app. Week 5 is done: the AES block cipher and the RSA number-theory functions pass their unit tests. Modes, key generation, the hybrid wiring, and the GUI are stubbed for the next milestones.
+From-scratch AES-128 and RSA in Python. The finished demo is a hybrid scheme (RSA wraps an AES session key, AES-CBC encrypts the message) behind one Streamlit app. Week 5 is done: the AES block cipher and the RSA number-theory functions pass their unit tests. The Week 11 RSA scheme and its Streamlit page are done. AES modes, the hybrid wiring, and the rest of the GUI are stubbed for the next milestones.
 
 The design, function list, and test plan are in [docs/design.md](docs/design.md).
 
@@ -15,7 +15,7 @@ pytest
 
 `pip install pytest` is enough for the current suite. Streamlit is listed for the Week 9–13 GUI and is not imported yet.
 
-A green run looks like `27 passed, 9 skipped`. The skipped tests are the contract for later weeks. Remove a test's `@pytest.mark.skip` line after implementing the function it calls. Do not satisfy a test by calling PyCryptodome or another crypto library.
+A green run looks like `37 passed, 5 skipped`. The skipped tests are the contract for later weeks. Remove a test's `@pytest.mark.skip` line after implementing the function it calls. Do not satisfy a test by calling PyCryptodome or another crypto library.
 
 ## What already passes
 
@@ -25,6 +25,8 @@ A green run looks like `27 passed, 9 skipped`. The skipped tests are the contrac
 - AES-128 key expansion
 - `encrypt_block` and `decrypt_block`, including FIPS-197 Appendix C.1
 - `extended_gcd`, `modinv`, and square-and-multiply `modexp`
+- RSA: Miller-Rabin, prime and key generation, textbook `encrypt_int` / `decrypt_int`, CRT decryption, PKCS#1 v1.5, byte `encrypt` / `decrypt`
+- RSA Streamlit page: `src/cryptosystem/gui/rsa_page.py`, drawn by `render()`
 
 ## Where to continue
 
@@ -34,7 +36,7 @@ One person, Weeks 7–9, first scheme:
 - [tests/unit/test_modes.py](tests/unit/test_modes.py): NIST SP 800-38A F.2.1 is the CBC vector
 - [app.py](app.py): the AES page only. Key entry is 32 hex characters. No password KDF.
 
-The other person, Week 11, second scheme:
+The other person, Week 11, second scheme (done, Pichponleur):
 
 - [src/cryptosystem/rsa/rsa.py](src/cryptosystem/rsa/rsa.py): Miller-Rabin, prime generation, `generate_keypair`, textbook `encrypt_int` / `decrypt_int`, PKCS#1 v1.5, byte `encrypt` / `decrypt`
 - Build those on `modexp` and `modinv`. The private exponent uses Euler's totient, `(p - 1) * (q - 1)`, not Carmichael's lambda.
