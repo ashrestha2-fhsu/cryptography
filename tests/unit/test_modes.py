@@ -1,8 +1,6 @@
-"""Week 7–9 contract for CBC, PKCS#7, and the text/file helpers.
+"""Contract and edge-case tests for CBC, PKCS#7, and the text/file helpers.
 
-Every test is skipped until those functions exist. Delete the ``skip`` marker
-on a test when you implement the function it calls. Expected CBC bytes are
-NIST SP 800-38A appendix F.2.1 and are not produced by our code.
+Expected CBC bytes are NIST SP 800-38A appendix F.2.1.
 """
 
 import pytest
@@ -34,7 +32,6 @@ _CBC_CIPHERTEXT = bytes.fromhex(
 )
 
 
-@pytest.mark.skip(reason="Week 7: PKCS#7 padding is not implemented yet")
 def test_pkcs7_pad_and_unpad():
     assert pkcs7_pad(b"hello", 16) == b"hello" + bytes([11] * 11)
     assert pkcs7_unpad(b"hello" + bytes([11] * 11), 16) == b"hello"
@@ -45,22 +42,50 @@ def test_pkcs7_pad_and_unpad():
         pkcs7_unpad(b"hello", 16)
 
 
-@pytest.mark.skip(reason="Week 7: AES-CBC is not implemented yet")
+def test_pkcs7_invalid_padding_rejected():
+    with pytest.raises(ValueError):
+        pkcs7_unpad(b"", 16)
+    with pytest.raises(ValueError):
+        pkcs7_unpad(b"\x00" * 16, 16)
+    with pytest.raises(ValueError):
+        pkcs7_unpad(b"a" * 15 + b"\x11", 16)
+    with pytest.raises(ValueError):
+        pkcs7_unpad(b"a" * 14 + b"\x01\x02", 16)
+    with pytest.raises(ValueError):
+        pkcs7_pad(b"abc", 0)
+    with pytest.raises(ValueError):
+        pkcs7_pad(b"abc", 256)
+
+
 def test_cbc_nist_sp800_38a_f21():
     assert encrypt_cbc(_CBC_PLAINTEXT, _CBC_KEY, _CBC_IV) == _CBC_CIPHERTEXT
     assert decrypt_cbc(_CBC_CIPHERTEXT, _CBC_KEY, _CBC_IV) == _CBC_PLAINTEXT
 
 
-@pytest.mark.skip(reason="Week 7: AES-CBC is not implemented yet")
-def test_cbc_rejects_a_partial_block():
+def test_cbc_rejects_a_partial_block_and_bad_iv():
     with pytest.raises(ValueError):
         encrypt_cbc(b"short", _CBC_KEY, _CBC_IV)
+    with pytest.raises(ValueError):
+        decrypt_cbc(b"short", _CBC_KEY, _CBC_IV)
+    with pytest.raises(ValueError):
+        encrypt_cbc(_CBC_PLAINTEXT, _CBC_KEY, b"bad_iv")
 
 
-@pytest.mark.skip(reason="Week 9: text and file helpers are not implemented yet")
 def test_text_and_file_roundtrip():
     key = bytes.fromhex("000102030405060708090a0b0c0d0e0f")
     iv = bytes.fromhex("00112233445566778899aabbccddeeff")
     assert decrypt_text(encrypt_text("hi", key, iv), key, iv) == "hi"
+    assert decrypt_text(encrypt_text("", key, iv), key, iv) == ""
+    assert decrypt_text(encrypt_text("សួស្តី 🔐", key, iv), key, iv) == "សួស្តី 🔐"
     payload = b"\x00\xff binary"
     assert decrypt_file(encrypt_file(payload, key, iv), key, iv) == payload
+    assert decrypt_file(encrypt_file(b"", key, iv), key, iv) == b""
+
+
+def test_aes_192_and_256_cbc_roundtrip():
+    iv = bytes(range(16))
+    for key_len in (24, 32):
+        key = bytes(range(key_len))
+        assert decrypt_text(encrypt_text("AES-192/256 test", key, iv), key, iv) == "AES-192/256 test"
+        data = b"block" * 7
+        assert decrypt_file(encrypt_file(data, key, iv), key, iv) == data
