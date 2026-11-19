@@ -2,7 +2,7 @@
 
 CSCI 663 group project. The two schemes are AES and RSA, joined later as a hybrid cryptosystem: RSA wraps a random AES-128 session key, and AES-CBC encrypts the message. Algorithms are implemented in Python from the specifications. PyCryptodome and similar libraries are not used.
 
-This document is the Week 3 design. The Week 5 slice (field arithmetic, the AES block cipher, and RSA number theory) is already implemented and covered by passing unit tests. Everything else is a stub with a skipped test that states the expected behavior.
+This document is the Week 3 design, updated as each milestone landed. AES, RSA, the hybrid scheme, and the Streamlit demo are implemented. Week 15 is the group presentation.
 
 ## Milestones and who picks up what
 
@@ -10,29 +10,31 @@ This document is the Week 3 design. The Week 5 slice (field arithmetic, the AES 
 | --- | --- | --- |
 | 3 | This design, package layout, unit tests, system-test file | Done |
 | 5 | AES-128 block cipher and RSA `extended_gcd` / `modinv` / `modexp` | Done |
-| 7 | AES-CBC and PKCS#7 (`src/cryptosystem/aes/modes.py`) | Next teammate |
-| 9 | Text/file helpers and the Streamlit AES page (`app.py`) | Same teammate, through the first scheme |
+| 7 | AES-CBC and PKCS#7 (`src/cryptosystem/aes/modes.py`) | Done (Oudom) |
+| 9 | Text/file helpers and the Streamlit AES page | Done (Oudom) |
 | 11 | RSA primes, key generation, textbook encrypt/decrypt, PKCS#1 v1.5, RSA page | Done (Pichponleur) |
-| 13 | Hybrid package and one GUI with AES, RSA, and hybrid pages | Return to this after the two schemes exist |
+| 13 | Hybrid package and one GUI with AES, RSA, and hybrid pages | Done (Adarsha) |
 | 15 | Recorded group presentation | Whole group |
 
 ## Layout
 
 ```
-app.py                                 Streamlit entry point (stub)
+app.py                                 Streamlit entry point (AES, RSA, Hybrid)
 src/cryptosystem/aes/field.py          GF(2^8): xtime, gf_mul, gf_inv
 src/cryptosystem/aes/sbox.py           S-box built from the field inverse
 src/cryptosystem/aes/rounds.py         SubBytes, ShiftRows, MixColumns, AddRoundKey
 src/cryptosystem/aes/key_schedule.py   expand_key(key, nk=None)
 src/cryptosystem/aes/cipher.py         encrypt_block, decrypt_block
-src/cryptosystem/aes/modes.py          CBC, PKCS#7, text/file helpers (stub)
+src/cryptosystem/aes/modes.py          CBC, PKCS#7, text/file helpers
 src/cryptosystem/rsa/number_theory.py  extended_gcd, modinv, modexp
 src/cryptosystem/rsa/rsa.py            RSAKey plus the scheme
+src/cryptosystem/gui/aes_page.py       Streamlit AES page, render()
 src/cryptosystem/gui/rsa_page.py       Streamlit RSA page, render()
-src/cryptosystem/hybrid.py             HybridPackage plus encrypt/decrypt (stub)
+src/cryptosystem/gui/hybrid_page.py    Streamlit hybrid page, render()
+src/cryptosystem/hybrid.py             HybridPackage plus encrypt/decrypt
 tests/fips197.py                       Published FIPS-197 vectors
 tests/unit/                            One module per area
-tests/system/test_hybrid.py            End-to-end scenario, currently skipped
+tests/system/test_hybrid.py            End-to-end hybrid round trip
 ```
 
 A 16-byte AES state uses FIPS-197 input order. The byte at row `r` and column `c` is at index `r + 4 * c`. Callers pass blocks in that order already, which is the order of the NIST known-answer tests.
@@ -59,7 +61,7 @@ Checked vectors:
 - Appendix B ciphertext `3925841d02dc09fbdc118597196a0b32`
 - Appendix C.1: plaintext `00112233445566778899aabbccddeeff`, key `000102030405060708090a0b0c0d0e0f`, ciphertext `69c4e0d86a7b0430d8cdb78070b4c55a`
 
-Left for Weeks 7–9, specified in `modes.py` and `tests/unit/test_modes.py`:
+Done in Weeks 7–9 (Oudom), in `modes.py` and `tests/unit/test_modes.py`:
 
 - `pkcs7_pad` / `pkcs7_unpad`. Padding length `n` is `1..block_size`, and every padding byte equals `n`. A full block still gains a whole extra block.
 - `encrypt_cbc` / `decrypt_cbc` with no padding. `C_1 = AES(P_1 XOR iv)` and `C_i = AES(P_i XOR C_{i-1})`. The known answer is NIST SP 800-38A appendix F.2.1.
@@ -119,15 +121,15 @@ flowchart TD
 
 `HybridPackage` stores lowercase hex fields `wrapped_key`, `iv`, and `ciphertext`. `iv` is 16 bytes (32 hex characters). `wrapped_key` is the PKCS#1 encryption of the 16-byte session key, so its hex length is `2 * public_key.byte_length`. `encrypt_file` produces `ciphertext`.
 
-`tests/system/test_hybrid.py` is the whole-system test. It generates a 1024-bit key, encrypts `b"hybrid encryption demo"`, checks the three hex fields, and decrypts back to the same bytes. It stays skipped until Week 13.
+`tests/system/test_hybrid.py` is the whole-system test. It generates a 1024-bit key, encrypts `b"hybrid encryption demo"`, checks the three hex fields, and decrypts back to the same bytes.
 
 ## GUI
 
-`app.py` is the Streamlit entry point and currently raises `NotImplementedError`. One app, three pages:
+`app.py` is the Streamlit entry point. The sidebar selects one of three pages:
 
-- AES: 32 hex characters for the key, plaintext in, ciphertext hex out, and the reverse.
-- RSA: generate a key pair, show `n`, `e`, and `d`, encrypt and decrypt a short integer or a short byte string.
-- Hybrid: generate or paste an RSA key, type a message, show the package, and recover the message.
+- AES (`aes_page.render`): key and IV, UTF-8 text, and binary file encrypt/decrypt.
+- RSA (`rsa_page.render`): generate a key pair, show `n`, `e`, and `d`, encrypt and decrypt an integer or a short byte string. The key is stored in `st.session_state["rsa_key"]`.
+- Hybrid (`hybrid_page.render`): reuse or generate that RSA key, type a message, show `wrapped_key`, `iv`, and `ciphertext`, and recover the message.
 
 Run the finished app with `streamlit run app.py`.
 
@@ -143,6 +145,6 @@ Run the finished app with `streamlit run app.py`.
 | `tests/unit/test_key_schedule.py` | 5 | passing |
 | `tests/unit/test_aes_block.py` | 5 | passing |
 | `tests/unit/test_number_theory.py` | 5 | passing |
-| `tests/unit/test_modes.py` | 7 and 9 | skipped |
+| `tests/unit/test_modes.py` | 7 and 9 | passing |
 | `tests/unit/test_rsa.py` | 11 | passing |
-| `tests/system/test_hybrid.py` | 13 | skipped |
+| `tests/system/test_hybrid.py` | 13 | passing |
